@@ -4,7 +4,7 @@
 
 新增批量挖矿模式，仅支持私钥批量挖矿，不支持keypair
 
-Windows编译
+Windows编译  
 安装rust环境和vc环境，然后下载代码,同目录下启动cmd输入命令
 `cargo build --release`
 
