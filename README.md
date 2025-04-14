@@ -16,8 +16,26 @@ windows直接使用（适用本地环境安装有困难的用户）
 只需要下载release文件夹，直接在文件夹的cmd里启动，命令见下面
 
 
-Linux编译
-直接拉取代码，打包使用，代替官方教程的cargo install bitz
+Linux编译(ubuntu22版，24版好像有点小问题，自测吧)
+```
+sudo apt-get update && sudo apt-get upgrade -y
+sudo apt install screen curl nano build-essential  -y
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+git clone https://github.com/huahua1220/bitz-cli.git
+cd bitz-cli
+cargo build --release
+cd ..
+sudo ln -s ~/bitz-cli/target/release/bitz /usr/local/bin/bitz
+cp ~/bitz-cli/release/bitz.json ~/bitz.json
+```
+在用户主目录下会有个bitz.json文件，放私钥用的
+```
+nano ~/bitz.json
+```
+打开编辑，xterminal直接在主目录下打开bitz.json编辑  
+
+然后再执行下面命令就好
 
 新增指令：  
 
