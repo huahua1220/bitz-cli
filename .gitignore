@@ -1,2 +1,9 @@
-/target
-output.log
+# 直接访问官方网站：
+# 打开浏览器访问 https://slproweb.com/products/Win32OpenSSL.html
+# 下载"Win64 OpenSSL v3.x.x"版本
+# 手动运行下载的安装程序
+
+/target/
+**/*.rs.bk
+Cargo.lock
+.env

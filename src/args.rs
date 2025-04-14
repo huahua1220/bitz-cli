@@ -93,7 +93,7 @@ pub struct CheckpointArgs {
     pub continuous: bool,
 }
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 pub struct ClaimArgs {
     #[arg(
         value_name = "AMOUNT",
@@ -115,13 +115,20 @@ pub struct ClaimArgs {
         help = "The optional pool url to claim rewards from."
     )]
     pub pool_url: Option<String>,
+
+    #[arg(
+        long,
+        value_name = "SUB_PRIVATE_FILEPATH",
+        help = "JSON文件路径，包含要批量领取的私钥"
+    )]
+    pub sub_private: Option<String>,
 }
 
 #[cfg(feature = "admin")]
 #[derive(Parser, Debug)]
 pub struct InitializeArgs {}
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 pub struct CollectArgs {
     #[arg(
         long,
@@ -331,4 +338,25 @@ pub struct UpgradeArgs {
         help = "The amount of BITZ to upgrade from v1 to v2. Defaults to max."
     )]
     pub amount: Option<f64>,
+}
+
+#[derive(Parser, Debug)]
+pub struct StopMiningArgs {
+    #[arg(
+        long,
+        short,
+        help = "终止所有bitz相关进程，不仅限于批量挖矿创建的进程",
+        default_value = "false"
+    )]
+    pub kill_all: bool,
+}
+
+#[derive(Parser, Debug)]
+pub struct CheckArgs {
+    #[arg(
+        long,
+        value_name = "SUB_PRIVATE_FILEPATH",
+        help = "JSON文件路径，包含要批量查询的私钥"
+    )]
+    pub sub_private: Option<String>,
 }

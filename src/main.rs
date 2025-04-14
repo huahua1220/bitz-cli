@@ -1,22 +1,20 @@
+use clap::{Parser, Subcommand};
+use solana_client::nonblocking::rpc_client::RpcClient;
+use solana_sdk::{
+    commitment_config::CommitmentConfig,
+    signature::{read_keypair_file, Keypair, Signer},
+};
+use std::sync::Arc;
+
+use args::*;
+use error::Error;
+use utils::{PoolCollectingData, SoloCollectingData};
+
 mod args;
 mod command;
 mod error;
 mod send;
 mod utils;
-
-use futures::StreamExt;
-use std::{sync::Arc, sync::RwLock};
-use tokio_tungstenite::connect_async;
-use tokio_tungstenite::tungstenite::protocol::Message;
-
-use args::*;
-use clap::{command, Parser, Subcommand};
-use solana_client::nonblocking::rpc_client::RpcClient;
-use solana_sdk::{
-    commitment_config::CommitmentConfig,
-    signature::{read_keypair_file, Keypair},
-};
-use utils::{PoolCollectingData, SoloCollectingData, Tip};
 
 // TODO: Unify balance and proof into "account"
 // TODO: Move balance subcommands to "pool"
@@ -36,6 +34,7 @@ struct Miner {
     pub fee_private_key: Option<String>,
     pub solo_collecting_data: Arc<std::sync::RwLock<Vec<SoloCollectingData>>>,
     pub pool_collecting_data: Arc<std::sync::RwLock<Vec<PoolCollectingData>>>,
+    pub sub_private_filepath: Option<String>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -70,6 +69,12 @@ enum Commands {
 
     #[command(about = "Send BITZ to another user")]
     Transfer(TransferArgs),
+    
+    #[command(about = "停止挖矿进程")]
+    Stop(StopMiningArgs),
+    
+    #[command(about = "批量查询BITZ余额和挖矿时间")]
+    Check(CheckArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -144,6 +149,14 @@ struct Args {
     #[arg(long, help = "Enable dynamic priority fees", global = true)]
     dynamic_fee: bool,
 
+    #[arg(
+        long,
+        value_name = "SUB_PRIVATE_FILEPATH",
+        help = "JSON file containing private keys for batch mining",
+        global = true
+    )]
+    sub_private: Option<String>,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -167,14 +180,24 @@ async fn main() {
         solana_cli_config::Config::default()
     };
 
+    // 自定义默认RPC地址
+    let default_rpc_url = String::from("https://eclipse.helius-rpc.com/");
+    
     // Initialize miner.
-    let cluster = args.rpc.unwrap_or(cli_config.json_rpc_url);
+    let cluster = args.rpc.unwrap_or_else(|| {
+        if cli_config.json_rpc_url.is_empty() {
+            default_rpc_url
+        } else {
+            cli_config.json_rpc_url
+        }
+    });
+    
     let default_keypair = args.keypair.unwrap_or(cli_config.keypair_path.clone());
     let fee_payer_filepath = args.fee_payer.unwrap_or(default_keypair.clone());
     let rpc_client = RpcClient::new_with_commitment(cluster, CommitmentConfig::confirmed());
 
-    let solo_collecting_data = Arc::new(RwLock::new(Vec::new()));
-    let pool_collecting_data = Arc::new(RwLock::new(Vec::new()));
+    let solo_collecting_data = Arc::new(std::sync::RwLock::new(Vec::new()));
+    let pool_collecting_data = Arc::new(std::sync::RwLock::new(Vec::new()));
 
     let miner = Arc::new(Miner::new(
         Arc::new(rpc_client),
@@ -187,6 +210,7 @@ async fn main() {
         args.fee_private_key,
         solo_collecting_data,
         pool_collecting_data,
+        args.sub_private,
     ));
 
     // Execute user command.
@@ -209,8 +233,14 @@ async fn main() {
             miner.program().await;
         }
         Commands::Collect(args) => {
-            if let Err(err) = miner.collect(args).await {
-                println!("{:?}", err);
+            if miner.sub_private_filepath.is_some() {
+                if let Err(err) = miner.batch_collect(args).await {
+                    println!("{:?}", err);
+                }
+            } else {
+                if let Err(err) = miner.mine(args).await {
+                    println!("{:?}", err);
+                }
             }
         }
         Commands::Stake(args) => {
@@ -225,6 +255,14 @@ async fn main() {
         #[cfg(feature = "admin")]
         Commands::Initialize(_) => {
             miner.initialize().await;
+        }
+        Commands::Stop(args) => {
+            if let Err(err) = miner.terminate_mining(args) {
+                println!("{:?}", err);
+            }
+        }
+        Commands::Check(args) => {
+            miner.check(args).await;
         }
     }
 }
@@ -241,6 +279,7 @@ impl Miner {
         fee_private_key: Option<String>,
         solo_collecting_data: Arc<std::sync::RwLock<Vec<SoloCollectingData>>>,
         pool_collecting_data: Arc<std::sync::RwLock<Vec<PoolCollectingData>>>,
+        sub_private_filepath: Option<String>,
     ) -> Self {
         Self {
             rpc_client,
@@ -253,6 +292,7 @@ impl Miner {
             fee_private_key,
             solo_collecting_data,
             pool_collecting_data,
+            sub_private_filepath,
         }
     }
 
@@ -287,4 +327,4 @@ impl Miner {
             None => panic!("No fee payer keypair provided"),
         }
     }
-}
+} 

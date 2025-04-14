@@ -1,5 +1,6 @@
 use std::{sync::Arc, time::Instant};
 
+use colored::*;
 use drillx::equix;
 use solana_rpc_client::spinner;
 
@@ -10,8 +11,8 @@ const TEST_DURATION: i64 = 30;
 impl Miner {
     pub async fn benchmark(&self, args: BenchmarkArgs) {
         // Check num threads
-        let cores = self.parse_cores(args.cores);
-        self.check_num_cores(cores);
+        let cores = self.benchmark_parse_cores(&args.cores);
+        self.benchmark_check_cores(cores);
 
         // Dispatch job to each thread
         let challenge = [0; 32];
@@ -77,5 +78,24 @@ impl Miner {
             "Hashpower: {} H/sec",
             total_nonces.saturating_div(TEST_DURATION as u64),
         ));
+    }
+    
+    fn benchmark_parse_cores(&self, cores: &str) -> u64 {
+        if cores == "ALL" {
+            num_cpus::get() as u64
+        } else {
+            cores.parse::<u64>().unwrap_or(1)
+        }
+    }
+
+    fn benchmark_check_cores(&self, cores: u64) {
+        let num_cores = num_cpus::get() as u64;
+        if cores.gt(&num_cores) {
+            println!(
+                "{} Cannot exceeds available cores ({})",
+                "WARNING".bold().yellow(),
+                num_cores
+            );
+        }
     }
 }

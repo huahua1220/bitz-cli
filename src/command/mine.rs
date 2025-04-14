@@ -50,7 +50,7 @@ use crate::{
 use super::pool::Pool;
 
 impl Miner {
-    pub async fn collect(&self, args: CollectArgs) -> Result<(), Error> {
+    pub async fn mine(&self, args: CollectArgs) -> Result<(), Error> {
         match args.pool_url {
             Some(ref pool_url) => {
                 let pool = &Pool {

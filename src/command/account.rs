@@ -216,6 +216,7 @@ impl Miner {
                 amount: None,
                 to: None,
                 pool_url: None,
+                sub_private: None,
             })
             .await;
         }
